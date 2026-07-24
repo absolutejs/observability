@@ -32,10 +32,14 @@ export const manifest = defineManifest<ManagedObservabilityOptions>()({
       },
     ],
     peers: [
-      { name: "elysia", range: ">=1.4.0", reason: "same-origin relay host" },
+      {
+        name: "elysia",
+        range: ">=1.4.29 <2",
+        reason: "same-origin relay host",
+      },
       {
         name: "rrweb",
-        range: "^2.0.0",
+        range: ">=2.1.1 <3",
         reason: "lazy-loaded session recording engine",
       },
     ],

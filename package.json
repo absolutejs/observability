@@ -1,6 +1,6 @@
 {
   "name": "@absolutejs/observability",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Managed AbsoluteJS observability: correlated browser and server errors plus privacy-masked Replay through a credential-safe Elysia relay.",
   "repository": {
     "type": "git",
@@ -58,29 +58,35 @@
     "elysia"
   ],
   "absolutejs": {
-    "manifestContract": 2
+    "manifestContract": 2,
+    "runtimePeers": {
+      "elysia": {
+        "artifactImports": [
+          "elysia"
+        ],
+        "buildExternals": [
+          "elysia"
+        ],
+        "range": ">=1.4.29 <2",
+        "tested": "1.4.29"
+      }
+    }
   },
   "dependencies": {
     "@absolutejs/beacon": "^0.3.15",
-    "@absolutejs/errors-elysia": "^0.2.1",
-    "@absolutejs/manifest": "^0.5.0",
+    "@absolutejs/errors-elysia": "^0.3.0",
+    "@absolutejs/manifest": "^0.7.1",
     "@absolutejs/replay": "^0.3.0",
     "@sinclair/typebox": "^0.34.0"
   },
   "peerDependencies": {
-    "elysia": ">=1.4.0",
-    "rrweb": "^2.0.0"
-  },
-  "peerDependenciesMeta": {
-    "rrweb": {
-      "optional": true
-    }
+    "elysia": ">=1.4.29 <2"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
-    "elysia": "^1.4.29",
+    "elysia": "1.4.29",
     "prettier": "^3.8.3",
-    "rrweb": "^2.0.1",
+    "rrweb": "2.1.1",
     "typescript": "^5.9.3"
   }
 }
