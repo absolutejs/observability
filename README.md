@@ -3,10 +3,15 @@
 Managed browser observability for AbsoluteJS applications. It composes
 `@absolutejs/beacon` and `@absolutejs/replay`, correlates every captured issue
 with its privacy-masked session tail, and sends both through a same-origin
-Elysia relay.
+Elysia relay. The relay also composes `@absolutejs/errors-elysia`: thrown
+server exceptions, sanitized handled 5xx responses, and unexplained returned
+5xx responses enter the same project-fenced issue history with a safe trace id.
 
 The browser receives only its non-secret project id. The relay reads the
 project-scoped destination and write credential from the server environment.
+Server error messages, stacks, tags, and context are redacted against
+secret-shaped environment values before leaving the workload, then redacted
+again by the control plane before persistence.
 
 ```ts
 import { createManagedObservability } from "@absolutejs/observability";
@@ -21,6 +26,10 @@ import { createManagedObservabilityRelayFromEnv } from "@absolutejs/observabilit
 
 new Elysia().use(createManagedObservabilityRelayFromEnv());
 ```
+
+Mount the relay before application routes. Its manifest declares the
+`server-boundary` placement, so AbsoluteJS Studio does this automatically and
+the error hook observes every generated handler.
 
 Required server environment:
 

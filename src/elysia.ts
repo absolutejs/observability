@@ -1,3 +1,7 @@
+import {
+  errorsElysia,
+  type ErrorCaptureContext,
+} from "@absolutejs/errors-elysia";
 import { Elysia, t } from "elysia";
 
 const HTTP_BAD_GATEWAY = 502;
@@ -14,8 +18,13 @@ export type ObservabilityRelayFetch = (
 
 export type ManagedObservabilityRelayOptions = {
   endpoint: string;
+  environment?: string;
   fetch?: ObservabilityRelayFetch;
+  onCaptureError?: (error: unknown) => void;
   project: string;
+  redact?: (value: string) => string;
+  release?: string;
+  serverErrors?: boolean;
   token: string;
 };
 
@@ -84,22 +93,58 @@ const normalizedEndpoint = (value: string) => {
   return endpoint;
 };
 
+const errorFrom = (value: unknown): Error =>
+  value instanceof Error ? value : new Error(String(value));
+
+const redactContext = (
+  value: unknown,
+  redact: (value: string) => string,
+  seen = new WeakSet<object>(),
+): unknown => {
+  if (typeof value === "string") return redact(value);
+  if (value === null || typeof value !== "object") return value;
+  if (seen.has(value)) return "[Circular]";
+  seen.add(value);
+  if (Array.isArray(value))
+    return value.map((item) => redactContext(item, redact, seen));
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [
+      key,
+      redactContext(item, redact, seen),
+    ]),
+  );
+};
+
+const environmentRedactor = (env: RelayEnvironment) => {
+  const secrets = Object.entries(env)
+    .filter(
+      ([key, value]) =>
+        value !== undefined &&
+        value.length >= 8 &&
+        /(DATABASE_URL|KEY|PASSWORD|SECRET|TOKEN)$/i.test(key),
+    )
+    .map(([, value]) => value!)
+    .sort((left, right) => right.length - left.length);
+
+  return (value: string) =>
+    secrets.reduce(
+      (redacted, secret) => redacted.replaceAll(secret, "[REDACTED]"),
+      value,
+    );
+};
+
 export const createManagedObservabilityRelay = (
   options: ManagedObservabilityRelayOptions,
 ) => {
   const endpoint = normalizedEndpoint(options.endpoint);
   const doFetch: ObservabilityRelayFetch = options.fetch ?? globalThis.fetch;
-  const upstream = async (
-    url: URL,
-    body: unknown,
-    authorization = false,
-  ) => {
+  const redact = options.redact ?? ((value: string) => value);
+  const upstream = async (url: URL, body: unknown, authorization = false) => {
     const response = await doFetch(url, {
       body: JSON.stringify(body),
       headers: {
-        ...(authorization
-          ? { authorization: `Bearer ${options.token}` }
-          : {}),
+        ...(authorization ? { authorization: `Bearer ${options.token}` } : {}),
         "content-type": "application/json",
       },
       method: "POST",
@@ -107,11 +152,72 @@ export const createManagedObservabilityRelay = (
     if (!response.ok)
       throw new Error(`Observability upstream responded ${response.status}`);
   };
+  const captureServerError = async (
+    value: unknown,
+    context?: ErrorCaptureContext,
+  ) => {
+    const error = errorFrom(value);
+    await upstream(
+      new URL(`${endpoint.pathname}/errors/ingest`, endpoint),
+      {
+        ...(options.environment ? { environment: options.environment } : {}),
+        events: [
+          {
+            ...(context?.extra
+              ? {
+                  extra: redactContext(context.extra, redact) as Record<
+                    string,
+                    unknown
+                  >,
+                }
+              : {}),
+            level: context?.level ?? "error",
+            message: redact(error.message),
+            name: error.name,
+            ...(context?.replayId
+              ? { replayId: redact(context.replayId) }
+              : {}),
+            ...(context?.spanId ? { spanId: redact(context.spanId) } : {}),
+            ...(error.stack ? { stack: redact(error.stack) } : {}),
+            ...(context?.tags
+              ? {
+                  tags: Object.fromEntries(
+                    (
+                      Object.entries(context.tags) as Array<[string, string]>
+                    ).map(([key, value]) => [key, redact(value)]),
+                  ),
+                }
+              : {}),
+            ...(context?.traceId ? { traceId: redact(context.traceId) } : {}),
+          },
+        ],
+        project: options.project,
+        ...(options.release ? { release: options.release } : {}),
+        v: 1,
+      },
+      true,
+    );
+  };
+  const serverBoundary =
+    options.serverErrors === false
+      ? new Elysia({ name: "@absolutejs/observability/server-errors-disabled" })
+      : errorsElysia({
+          capture: captureServerError,
+          ...(options.onCaptureError
+            ? { onCaptureError: options.onCaptureError }
+            : {}),
+        });
 
   return new Elysia({
     name: "@absolutejs/observability",
     prefix: "/api/observability",
   })
+    .use(serverBoundary)
+    .onError({ as: "global" }, ({ code, status }) => {
+      if (code === "UNKNOWN") return status("Internal Server Error");
+
+      return undefined;
+    })
     .post(
       "/errors",
       async ({ body, status }) => {
@@ -122,8 +228,9 @@ export const createManagedObservabilityRelay = (
           );
         try {
           await upstream(
-            new URL("/api/errors/ingest", endpoint),
+            new URL(`${endpoint.pathname}/errors/ingest`, endpoint),
             body,
+            true,
           );
 
           return { accepted: body.events.length, project: options.project };
@@ -171,7 +278,16 @@ export const createManagedObservabilityRelayFromEnv = (
       "ABSOLUTE_OBSERVABILITY_ENDPOINT, ABSOLUTE_PROJECT_ID, and ABSOLUTE_OBSERVABILITY_TOKEN are required",
     );
 
-  return createManagedObservabilityRelay({ endpoint, project, token });
+  const release = env.RELEASE_ID?.trim() || env.GIT_SHA?.trim();
+
+  return createManagedObservabilityRelay({
+    endpoint,
+    environment: env.NODE_ENV?.trim() || "development",
+    project,
+    redact: environmentRedactor(env),
+    ...(release ? { release } : {}),
+    token,
+  });
 };
 
 export type ManagedObservabilityRelay = ReturnType<

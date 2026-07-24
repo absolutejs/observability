@@ -8,7 +8,7 @@ export const manifest = defineManifest<ManagedObservabilityOptions>()({
     accent: "#8b5cf6",
     category: "observability",
     description:
-      "Correlated browser errors and privacy-masked session replay through a same-origin Elysia relay. Project credentials stay in the server runtime and never enter browser settings.",
+      "Correlated browser and server errors plus privacy-masked session replay through a same-origin Elysia relay. Project credentials stay in the server runtime and never enter browser settings.",
     docsUrl: "https://github.com/absolutejs/observability",
     name: "@absolutejs/observability",
     tagline: "See what went wrong without leaking a tenant credential.",
@@ -112,7 +112,7 @@ export const manifest = defineManifest<ManagedObservabilityOptions>()({
         },
       },
       description:
-        "Mount the credential-safe relay and initialize correlated browser capture.",
+        "Mount the credential-safe server error boundary and relay, then initialize correlated browser capture.",
       id: "default",
       server: {
         code: ".use(createManagedObservabilityRelayFromEnv())",
@@ -122,9 +122,9 @@ export const manifest = defineManifest<ManagedObservabilityOptions>()({
             names: ["createManagedObservabilityRelayFromEnv"],
           },
         ],
-        placement: "server-plugin",
+        placement: "server-boundary",
       },
-      title: "Managed errors and privacy-masked replay",
+      title: "Managed browser/server errors and privacy-masked replay",
     },
   ],
 });
