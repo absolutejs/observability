@@ -84,7 +84,10 @@ export const createManagedObservability = (
       ? {}
       : { sampleRate: options.sampleRate }),
     ...(options.signals === undefined ? {} : { signals: options.signals }),
-    ...(options.vitals === undefined ? {} : { vitals: options.vitals }),
+    vitals:
+      options.vitals === false
+        ? false
+        : { endpoint: "/api/observability/vitals" },
   };
   const beacon = createBeacon(beaconOptions);
 

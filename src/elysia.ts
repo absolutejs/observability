@@ -81,6 +81,30 @@ const ReplayUploadSchema = t.Object({
   }),
   manifest: ReplayManifestSchema,
 });
+const WebVitalSchema = t.Object({
+  at: t.Number({ minimum: 0 }),
+  environment: t.Optional(t.String({ maxLength: 64 })),
+  id: t.String({ maxLength: 255, minLength: 1 }),
+  name: t.Union([
+    t.Literal("LCP"),
+    t.Literal("INP"),
+    t.Literal("CLS"),
+    t.Literal("FCP"),
+    t.Literal("TTFB"),
+    t.Literal("TBT"),
+  ]),
+  navigationType: t.String({ maxLength: 64, minLength: 1 }),
+  path: t.String({ maxLength: 2_048, minLength: 1 }),
+  project: t.String({ format: "uuid" }),
+  rating: t.Union([
+    t.Literal("good"),
+    t.Literal("needs-improvement"),
+    t.Literal("poor"),
+  ]),
+  release: t.Optional(t.String({ maxLength: 255 })),
+  replayId: t.Optional(t.String({ format: "uuid" })),
+  value: t.Number({ minimum: 0 }),
+});
 
 const normalizedEndpoint = (value: string) => {
   const endpoint = new URL(value);
@@ -264,6 +288,28 @@ export const createManagedObservabilityRelay = (
         }
       },
       { body: ReplayUploadSchema },
+    )
+    .post(
+      "/vitals",
+      async ({ body, status }) => {
+        if (body.project !== options.project)
+          return status(
+            HTTP_BAD_REQUEST,
+            "Web Vital project does not match this runtime",
+          );
+        try {
+          await upstream(
+            new URL(`${endpoint.pathname}/vitals/ingest`, endpoint),
+            body,
+            true,
+          );
+
+          return { accepted: 1, project: options.project };
+        } catch {
+          return status(HTTP_BAD_GATEWAY, "Web Vital ingest is unavailable");
+        }
+      },
+      { body: WebVitalSchema },
     );
 };
 

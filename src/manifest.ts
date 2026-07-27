@@ -99,7 +99,9 @@ export const manifest = defineManifest<ManagedObservabilityOptions>()({
         title: "Actionable browser signals",
       }),
     ),
-    vitals: Type.Optional(Type.Boolean({ title: "Core Web Vitals" })),
+    vitals: Type.Optional(
+      Type.Boolean({ default: true, title: "Core Web Vitals" }),
+    ),
   }),
   wiring: [
     {

@@ -145,6 +145,49 @@ describe("managed observability relay", () => {
     );
   });
 
+  test("tenant-fences and authenticates Core Web Vital forwarding", async () => {
+    const requests: Request[] = [];
+    const app = createManagedObservabilityRelay({
+      endpoint: `https://control.example/api/projects/${PROJECT_ID}/observability`,
+      fetch: async (request, init) => {
+        requests.push(new Request(request, init));
+
+        return new Response(null, { status: 200 });
+      },
+      project: PROJECT_ID,
+      token: "project-token",
+    });
+    const vital = {
+      at: 1_700_000_000_000,
+      id: "vital-1",
+      name: "LCP",
+      navigationType: "navigate",
+      path: "/checkout",
+      project: PROJECT_ID,
+      rating: "poor",
+      release: "release-7",
+      replayId: REPLAY_ID,
+      value: 4_500,
+    };
+    const response = await app.handle(
+      new Request("http://site.test/api/observability/vitals", {
+        body: JSON.stringify(vital),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.url).toBe(
+      `https://control.example/api/projects/${PROJECT_ID}/observability/vitals/ingest`,
+    );
+    expect(requests[0]?.headers.get("authorization")).toBe(
+      "Bearer project-token",
+    );
+    expect(await requests[0]!.json()).toEqual(vital);
+  });
+
   test("rejects cross-project browser payloads before forwarding", async () => {
     let forwarded = false;
     const app = createManagedObservabilityRelay({
