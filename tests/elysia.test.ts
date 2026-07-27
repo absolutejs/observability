@@ -167,6 +167,10 @@ describe("managed observability relay", () => {
       rating: "poor",
       release: "release-7",
       replayId: REPLAY_ID,
+      samplingRate: 1,
+      schemaVersion: 1,
+      sdkVersion: "0.4.1",
+      traceId: "11111111111111111111111111111111",
       value: 4_500,
     };
     const response = await app.handle(

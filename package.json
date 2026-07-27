@@ -1,6 +1,6 @@
 {
   "name": "@absolutejs/observability",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Managed AbsoluteJS observability: correlated browser and server errors plus privacy-masked Replay through a credential-safe Elysia relay.",
   "repository": {
     "type": "git",

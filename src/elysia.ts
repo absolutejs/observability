@@ -103,6 +103,12 @@ const WebVitalSchema = t.Object({
   ]),
   release: t.Optional(t.String({ maxLength: 255 })),
   replayId: t.Optional(t.String({ format: "uuid" })),
+  samplingRate: t.Number({ exclusiveMinimum: 0, maximum: 1 }),
+  schemaVersion: t.Integer({ minimum: 1 }),
+  sdkVersion: t.Optional(t.String({ maxLength: 64, minLength: 1 })),
+  traceId: t.Optional(
+    t.String({ maxLength: 64, minLength: 16, pattern: "^[a-fA-F0-9]+$" }),
+  ),
   value: t.Number({ minimum: 0 }),
 });
 
