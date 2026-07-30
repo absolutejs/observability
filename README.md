@@ -31,6 +31,11 @@ Mount the relay before application routes. Its manifest declares the
 `server-boundary` placement, so AbsoluteJS Studio does this automatically and
 the error hook observes every generated handler.
 
+`captureHandoffContradiction()` promotes a contradictory
+`@absolutejs/handoff` summary into the same Issues pipeline at warning severity.
+It ignores non-contradictory summaries and excludes evidence messages,
+references, external ids, and raw payloads.
+
 Required server environment:
 
 - `ABSOLUTE_OBSERVABILITY_ENDPOINT`

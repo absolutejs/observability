@@ -1,9 +1,57 @@
 import { describe, expect, test } from "bun:test";
 import { Elysia } from "elysia";
-import { createManagedObservabilityRelay } from "../src/elysia";
+import {
+  captureHandoffContradiction,
+  createManagedObservabilityRelay,
+} from "../src/elysia";
 
 const PROJECT_ID = "6756f6d7-8e09-4ef9-b445-ed07092748ac";
 const REPLAY_ID = "874e7e96-fd31-4182-af85-534661c9ba6d";
+
+test("promotes only handoff contradictions with privacy-safe context", async () => {
+  const captures: Array<{ context: unknown; error: unknown }> = [];
+  const summary = {
+    authoritativeOutcome: "succeeded" as const,
+    contradiction: true,
+    correlationId: "handoff-1",
+    latest: {
+      at: 1,
+      correlationId: "handoff-1",
+      externalId: "private-external-id",
+      message: "customer-visible error",
+      operation: "invoice_payment",
+      outcome: "failed" as const,
+      reference: "private-reference",
+      service: "gateway",
+      source: "external_surface_report" as const,
+    },
+    operation: "invoice_payment",
+    reportedOutcome: "failed" as const,
+    service: "gateway",
+    status: "succeeded" as const,
+  };
+
+  expect(
+    await captureHandoffContradiction((error, context) => {
+      captures.push({ context, error });
+    }, summary),
+  ).toBe(true);
+  expect(captures).toHaveLength(1);
+  expect(captures[0]?.context).toMatchObject({
+    level: "warning",
+    target: "handoff-1",
+  });
+  expect(JSON.stringify(captures)).not.toContain("private-external-id");
+  expect(JSON.stringify(captures)).not.toContain("private-reference");
+  expect(
+    await captureHandoffContradiction(
+      () => {
+        throw new Error("must not capture");
+      },
+      { ...summary, contradiction: false },
+    ),
+  ).toBe(false);
+});
 
 describe("managed observability relay", () => {
   test("captures server failures through the authenticated project ingest", async () => {

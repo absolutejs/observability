@@ -1,7 +1,10 @@
+import { handoffErrorContext } from "@absolutejs/errors";
 import {
   errorsElysia,
   type ErrorCaptureContext,
+  type ErrorElysiaCapture,
 } from "@absolutejs/errors-elysia";
+import type { HandoffSummary } from "@absolutejs/handoff";
 import { Elysia, t } from "elysia";
 
 const HTTP_BAD_GATEWAY = 502;
@@ -125,6 +128,28 @@ const normalizedEndpoint = (value: string) => {
 
 const errorFrom = (value: unknown): Error =>
   value instanceof Error ? value : new Error(String(value));
+
+/**
+ * Promotes a reconciled handoff contradiction into the normal Issues pipeline.
+ * Non-contradictory summaries are ignored, and the capture context excludes
+ * evidence messages, references, external ids, and raw payloads.
+ */
+export const captureHandoffContradiction = async (
+  capture: ErrorElysiaCapture,
+  summary: HandoffSummary,
+  context: ErrorCaptureContext = {},
+) => {
+  if (!summary.contradiction) return false;
+  await capture(
+    new Error("External handoff evidence contradicts authoritative outcome"),
+    handoffErrorContext(summary, {
+      ...context,
+      level: context.level ?? "warning",
+    }),
+  );
+
+  return true;
+};
 
 const redactContext = (
   value: unknown,
