@@ -1,8 +1,8 @@
 import { handoffErrorContext } from "@absolutejs/errors";
 import {
-  errorsElysia,
+  errorsElysia as errorBoundaryPlugin,
   type ErrorCaptureContext,
-  type ErrorElysiaCapture,
+  type ErrorElysiaCapture as ErrorBoundaryCapture,
 } from "@absolutejs/errors-elysia";
 import type { HandoffSummary } from "@absolutejs/handoff";
 import { Elysia, t } from "elysia";
@@ -135,7 +135,7 @@ const errorFrom = (value: unknown): Error =>
  * evidence messages, references, external ids, and raw payloads.
  */
 export const captureHandoffContradiction = async (
-  capture: ErrorElysiaCapture,
+  capture: ErrorBoundaryCapture,
   summary: HandoffSummary,
   context: ErrorCaptureContext = {},
 ) => {
@@ -256,7 +256,7 @@ export const createManagedObservabilityRelay = (
   const serverBoundary =
     options.serverErrors === false
       ? new Elysia({ name: "@absolutejs/observability/server-errors-disabled" })
-      : errorsElysia({
+      : errorBoundaryPlugin({
           capture: captureServerError,
           ...(options.onCaptureError
             ? { onCaptureError: options.onCaptureError }
