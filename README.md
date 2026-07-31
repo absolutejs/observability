@@ -3,7 +3,7 @@
 Managed browser observability for AbsoluteJS applications. It composes
 `@absolutejs/beacon` and `@absolutejs/replay`, correlates every captured issue
 with its privacy-masked session tail, and sends both through a same-origin
-Elysia relay. The relay also composes `@absolutejs/errors-elysia`: thrown
+Elysia relay. The relay also composes `@absolutejs/errors/elysia`: thrown
 server exceptions, sanitized handled 5xx responses, and unexplained returned
 5xx responses enter the same project-fenced issue history with a safe trace id.
 

@@ -6,8 +6,7 @@
       "name": "@absolutejs/observability",
       "dependencies": {
         "@absolutejs/beacon": "^0.4.0",
-        "@absolutejs/errors": "0.6.3",
-        "@absolutejs/errors-elysia": "^0.3.0",
+        "@absolutejs/errors": "0.7.0",
         "@absolutejs/handoff": "0.1.0",
         "@absolutejs/manifest": "^0.7.1",
         "@absolutejs/replay": "^0.3.0",
@@ -29,9 +28,7 @@
   "packages": {
     "@absolutejs/beacon": ["@absolutejs/beacon@0.4.0", "", { "dependencies": { "@absolutejs/manifest": "0.7.2", "@sinclair/typebox": "0.34.52" }, "peerDependencies": { "web-vitals": ">=4" }, "optionalPeers": ["web-vitals"] }, "sha512-4rnMb/UFk/XnxkC/fM/V4OeBGDiaT5kZzQQAVDFAfI6PEc3ts8zBgv6GyBfy4Xz2jBnO6TSulRWhihwlx3AeNw=="],
 
-    "@absolutejs/errors": ["@absolutejs/errors@0.6.3", "", { "dependencies": { "@absolutejs/handoff": "0.1.0", "@absolutejs/manifest": "^0.7.2", "@sinclair/typebox": "^0.34.0" }, "peerDependencies": { "@jridgewell/trace-mapping": ">=0.3.31 <0.4", "effect": ">=3.22.0 <4", "elysia": ">=1.4.29 <2" }, "optionalPeers": ["@jridgewell/trace-mapping", "elysia"] }, "sha512-mV5RxgkRAvE/bOnNRpSpaL/7qi5D5X49wxXQUPbg3OosWATCeCiww7y0+JuLPsHERxu+qFqy6+ZZ3lK6y9KGxg=="],
-
-    "@absolutejs/errors-elysia": ["@absolutejs/errors-elysia@0.3.0", "", { "dependencies": { "@absolutejs/manifest": "0.7.1", "@sinclair/typebox": "^0.34.0" }, "peerDependencies": { "elysia": ">=1.4.29 <2" } }, "sha512-APnk54u+eMUYshlwufWaOCS9cRJyjiJHYm6MwuofTFGN6BxBvd17Rl71LsSm8CjmN9T36nq+NTeo1TJHyEFs3g=="],
+    "@absolutejs/errors": ["@absolutejs/errors@0.7.0", "", { "dependencies": { "@absolutejs/handoff": "0.1.0", "@absolutejs/manifest": "^0.7.2", "@sinclair/typebox": "^0.34.0" }, "peerDependencies": { "@jridgewell/trace-mapping": ">=0.3.31 <0.4", "effect": ">=3.22.0 <4", "elysia": ">=1.4.29 <2" }, "optionalPeers": ["@jridgewell/trace-mapping", "elysia"] }, "sha512-C8cULWvGznMv/3wfmE3sKOGHTprbzwlf18ZqFiPUdMqdK4NZnMBOqTslLcdSv2bAahzk/cKJUMK9TaxBUBIjfw=="],
 
     "@absolutejs/handoff": ["@absolutejs/handoff@0.1.0", "", { "dependencies": { "@absolutejs/manifest": "0.7.2", "@sinclair/typebox": "0.34.52" } }, "sha512-P9Wr2oyYBcj7mriCV4h9zRlLGijee/7DW8USVkl/m4ovql7zpITy547jy6j8+HC5v5Ocs+TVcMYmrROEEBupNg=="],
 
