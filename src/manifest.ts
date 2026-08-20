@@ -34,7 +34,7 @@ export const manifest = defineManifest<ManagedObservabilityOptions>()({
     peers: [
       {
         name: "elysia",
-        range: ">=1.4.29 <2",
+        range: "^2.0.0-beta.6",
         reason: "same-origin relay host",
       },
       {

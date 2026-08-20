@@ -5,7 +5,7 @@ import {
   type ErrorsCaptureContext,
 } from "@absolutejs/errors/elysia";
 import type { HandoffSummary } from "@absolutejs/handoff";
-import { Elysia, t } from "elysia";
+import { Elysia, ElysiaError, HTTPError, t } from "elysia";
 
 const HTTP_BAD_GATEWAY = 502;
 const HTTP_BAD_REQUEST = 400;
@@ -270,13 +270,15 @@ export const createManagedObservabilityRelay = (
     prefix: "/api/observability",
   })
     .use(serverBoundary)
-    .onError({ as: "global" }, ({ code, status }) => {
-      if (code === "UNKNOWN") return status("Internal Server Error");
+    .error("global", ({ error, status }) => {
+      if (!(error instanceof ElysiaError) && !(error instanceof HTTPError))
+        return status("Internal Server Error");
 
       return undefined;
     })
     .post(
       "/errors",
+      { body: BeaconEnvelopeSchema },
       async ({ body, status }) => {
         if (body.project !== options.project)
           return status(
@@ -295,10 +297,10 @@ export const createManagedObservabilityRelay = (
           return status(HTTP_BAD_GATEWAY, "Error ingest is unavailable");
         }
       },
-      { body: BeaconEnvelopeSchema },
     )
     .post(
       "/replays",
+      { body: ReplayUploadSchema },
       async ({ body, status }) => {
         if (body.manifest.project !== options.project)
           return status(
@@ -320,10 +322,10 @@ export const createManagedObservabilityRelay = (
           return status(HTTP_BAD_GATEWAY, "Replay ingest is unavailable");
         }
       },
-      { body: ReplayUploadSchema },
     )
     .post(
       "/vitals",
+      { body: WebVitalSchema },
       async ({ body, status }) => {
         if (body.project !== options.project)
           return status(
@@ -342,7 +344,6 @@ export const createManagedObservabilityRelay = (
           return status(HTTP_BAD_GATEWAY, "Web Vital ingest is unavailable");
         }
       },
-      { body: WebVitalSchema },
     );
 };
 
