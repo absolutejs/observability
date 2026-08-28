@@ -8,10 +8,11 @@ export const manifest = defineManifest<ManagedObservabilityOptions>()({
     accent: "#8b5cf6",
     category: "observability",
     description:
-      "Correlated browser and server errors plus privacy-masked session replay through a same-origin Elysia relay. Project credentials stay in the server runtime and never enter browser settings.",
+      "Correlated browser and server errors, privacy-masked session replay, vitals, and explicit privacy-audited Support Mode through a same-origin Elysia relay. Project credentials stay in the server runtime and never enter browser settings.",
     docsUrl: "https://github.com/absolutejs/observability",
     name: "@absolutejs/observability",
-    tagline: "See what went wrong without leaking a tenant credential.",
+    tagline:
+      "See and securely reproduce what went wrong without leaking a tenant credential.",
   },
   requires: {
     env: [
@@ -85,6 +86,39 @@ export const manifest = defineManifest<ManagedObservabilityOptions>()({
         title: "Session replay",
       }),
     ),
+    support: Type.Optional(
+      Type.Union(
+        [
+          Type.Boolean(),
+          Type.Object({
+            expiresInMs: Type.Optional(
+              Type.Integer({ minimum: 60_000, title: "Artifact expiry" }),
+            ),
+            maxDurationMs: Type.Optional(
+              Type.Integer({
+                maximum: 3_600_000,
+                minimum: 1_000,
+                title: "Maximum support recording duration",
+              }),
+            ),
+            propagateDiagnosticId: Type.Optional(
+              Type.Boolean({
+                default: false,
+                description:
+                  "Add a PII-free diagnostic correlation id to same-origin requests.",
+                title: "Propagate diagnostic id",
+              }),
+            ),
+          }),
+        ],
+        {
+          default: true,
+          description:
+            "Install dormant, user-authorized Support Mode with privacy-audited network and console capture.",
+          title: "Support Mode",
+        },
+      ),
+    ),
     sampleRate: Type.Optional(
       Type.Number({
         default: 1,
@@ -107,11 +141,18 @@ export const manifest = defineManifest<ManagedObservabilityOptions>()({
     {
       client: {
         client: {
-          code: "const observability = createManagedObservability(${settings});",
+          code: [
+            "const observability = createManagedObservability(${settings});",
+            "const disconnectSupportUi = connectManagedSupportReport(observability);",
+            "// Place <absolute-support-report></absolute-support-report> anywhere in the app.",
+          ].join("\n"),
           imports: [
             {
               from: "@absolutejs/observability",
-              names: ["createManagedObservability"],
+              names: [
+                "connectManagedSupportReport",
+                "createManagedObservability",
+              ],
             },
           ],
           placement: "client-entry",
@@ -130,7 +171,8 @@ export const manifest = defineManifest<ManagedObservabilityOptions>()({
         ],
         placement: "server-boundary",
       },
-      title: "Managed browser/server errors and privacy-masked replay",
+      title:
+        "Managed errors, privacy-masked replay, and user-authorized Support Mode",
     },
   ],
 });

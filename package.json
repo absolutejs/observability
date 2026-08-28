@@ -1,7 +1,7 @@
 {
   "name": "@absolutejs/observability",
-  "version": "0.5.0",
-  "description": "Managed AbsoluteJS observability: correlated browser and server errors plus privacy-masked Replay through a credential-safe Elysia relay.",
+  "version": "0.6.0",
+  "description": "Managed AbsoluteJS observability: correlated errors, Replay, vitals, traces, and user-authorized Support Mode through a credential-safe Elysia relay.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/absolutejs/observability.git"
@@ -43,7 +43,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "rm -rf dist && bun build src/index.ts --outdir dist --root ./src --sourcemap --target=browser --external @absolutejs/beacon --external @absolutejs/replay && bun build src/elysia.ts src/manifest.ts --outdir dist --root ./src --sourcemap --target=bun --external @absolutejs/beacon --external @absolutejs/errors --external @absolutejs/handoff --external @absolutejs/manifest --external @absolutejs/replay --external @sinclair/typebox --external elysia && tsc --project tsconfig.build.json && absolute-manifest emit",
+    "build": "rm -rf dist && bun build src/index.ts --outdir dist --root ./src --sourcemap --target=browser --external @absolutejs/beacon --external '@absolutejs/beacon/*' --external @absolutejs/diagnostics --external '@absolutejs/diagnostics/*' --external @absolutejs/replay --external '@absolutejs/replay/*' && bun build src/elysia.ts src/manifest.ts --outdir dist --root ./src --sourcemap --target=bun --external @absolutejs/beacon --external @absolutejs/diagnostics --external '@absolutejs/diagnostics/*' --external @absolutejs/errors --external @absolutejs/handoff --external @absolutejs/manifest --external @absolutejs/replay --external @sinclair/typebox --external elysia && tsc --project tsconfig.build.json && absolute-manifest emit",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"./**/*.{ts,json,md}\"",
@@ -61,11 +61,12 @@
     "manifestContract": 2
   },
   "dependencies": {
-    "@absolutejs/beacon": "^0.4.0",
+    "@absolutejs/beacon": "0.6.61",
+    "@absolutejs/diagnostics": "0.2.0",
     "@absolutejs/errors": "0.9.0",
     "@absolutejs/handoff": "0.1.0",
     "@absolutejs/manifest": "^0.9.0",
-    "@absolutejs/replay": "^0.3.0",
+    "@absolutejs/replay": "0.3.5",
     "@sinclair/typebox": "^0.34.0",
     "web-vitals": "6.0.0"
   },

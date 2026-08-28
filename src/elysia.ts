@@ -5,6 +5,8 @@ import {
   type ErrorsCaptureContext,
 } from "@absolutejs/errors/elysia";
 import type { HandoffSummary } from "@absolutejs/handoff";
+import { createSupportBundle } from "@absolutejs/diagnostics/support";
+import type { SupportBundle } from "@absolutejs/diagnostics";
 import { Elysia, ElysiaError, HTTPError, t } from "elysia";
 
 const HTTP_BAD_GATEWAY = 502;
@@ -12,6 +14,7 @@ const HTTP_BAD_REQUEST = 400;
 const MAX_ERROR_EVENTS = 100;
 const MAX_REPLAY_CHUNKS = 200;
 const MAX_REPLAY_EVENTS = 10_000;
+const MAX_DIAGNOSTIC_BYTES = 5_000_000;
 
 type RelayEnvironment = Record<string, string | undefined>;
 export type ObservabilityRelayFetch = (
@@ -324,27 +327,79 @@ export const createManagedObservabilityRelay = (
       },
     )
     .post(
-      "/vitals",
-      { body: WebVitalSchema },
+      "/diagnostics",
+      { body: t.Object({ bundle: t.Unknown() }) },
       async ({ body, status }) => {
-        if (body.project !== options.project)
-          return status(
-            HTTP_BAD_REQUEST,
-            "Web Vital project does not match this runtime",
-          );
+        if (
+          new TextEncoder().encode(JSON.stringify(body)).byteLength >
+          MAX_DIAGNOSTIC_BYTES
+        ) {
+          return status(413, "Support report exceeds the configured limit");
+        }
+        const candidate = body.bundle as Partial<SupportBundle>;
+        if (
+          candidate.archive === undefined ||
+          candidate.manifest?.project !== options.project ||
+          !Array.isArray(candidate.markers)
+        ) {
+          return status(HTTP_BAD_REQUEST, "Support report is invalid");
+        }
+        let bundle: SupportBundle;
+        try {
+          bundle = createSupportBundle({
+            archive: candidate.archive,
+            ...(candidate.context === undefined
+              ? {}
+              : { context: candidate.context }),
+            ...(candidate.manifest.expiresAt === undefined
+              ? {}
+              : { expiresAt: candidate.manifest.expiresAt }),
+            ...(candidate.correlations?.issueFingerprints === undefined
+              ? {}
+              : {
+                  issueFingerprints: candidate.correlations.issueFingerprints,
+                }),
+            markers: candidate.markers,
+            ...(candidate.correlations?.traceIds === undefined
+              ? {}
+              : { traceIds: candidate.correlations.traceIds }),
+          });
+        } catch {
+          return status(422, "Support report failed its privacy audit");
+        }
         try {
           await upstream(
-            new URL(`${endpoint.pathname}/vitals/ingest`, endpoint),
-            body,
+            new URL(`${endpoint.pathname}/diagnostics/ingest`, endpoint),
+            { bundle },
             true,
           );
-
-          return { accepted: 1, project: options.project };
+          return { accepted: 1, id: bundle.manifest.id };
         } catch {
-          return status(HTTP_BAD_GATEWAY, "Web Vital ingest is unavailable");
+          return status(
+            HTTP_BAD_GATEWAY,
+            "Support report ingest is unavailable",
+          );
         }
       },
-    );
+    )
+    .post("/vitals", { body: WebVitalSchema }, async ({ body, status }) => {
+      if (body.project !== options.project)
+        return status(
+          HTTP_BAD_REQUEST,
+          "Web Vital project does not match this runtime",
+        );
+      try {
+        await upstream(
+          new URL(`${endpoint.pathname}/vitals/ingest`, endpoint),
+          body,
+          true,
+        );
+
+        return { accepted: 1, project: options.project };
+      } catch {
+        return status(HTTP_BAD_GATEWAY, "Web Vital ingest is unavailable");
+      }
+    });
 };
 
 export const createManagedObservabilityRelayFromEnv = (

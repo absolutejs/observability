@@ -4,6 +4,8 @@ import {
   captureHandoffContradiction,
   createManagedObservabilityRelay,
 } from "../src/elysia";
+import { createSupportBundle } from "@absolutejs/diagnostics/support";
+import type { DiagnosticArchive } from "@absolutejs/diagnostics";
 
 const PROJECT_ID = "6756f6d7-8e09-4ef9-b445-ed07092748ac";
 const REPLAY_ID = "874e7e96-fd31-4182-af85-534661c9ba6d";
@@ -187,6 +189,53 @@ describe("managed observability relay", () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]?.url).toBe(
       `https://control.example/api/projects/${PROJECT_ID}/observability/replays/ingest`,
+    );
+    expect(requests[0]?.headers.get("authorization")).toBe(
+      "Bearer project-token",
+    );
+  });
+
+  test("tenant-fences, re-audits, and authenticates support reports", async () => {
+    const requests: Request[] = [];
+    const app = createManagedObservabilityRelay({
+      endpoint: `https://control.example/api/projects/${PROJECT_ID}/observability`,
+      fetch: async (request, init) => {
+        requests.push(new Request(request, init));
+        return new Response(null, { status: 200 });
+      },
+      project: PROJECT_ID,
+      token: "project-token",
+    });
+    const archive: DiagnosticArchive = {
+      console: [],
+      manifest: {
+        cacheDisabled: false,
+        completeness: "in-page-partial",
+        consoleEntries: 0,
+        endedAt: 2,
+        id: "123e4567-e89b-12d3-a456-426614174000",
+        maxBytes: 1_000,
+        networkEntries: 0,
+        preserveLog: true,
+        project: PROJECT_ID,
+        redacted: true,
+        startedAt: 1,
+        truncation: { bodies: 0, console: 0, network: 0 },
+      },
+      network: [],
+      version: 1,
+    };
+    const response = await app.handle(
+      new Request("http://site.test/api/observability/diagnostics", {
+        body: JSON.stringify({ bundle: createSupportBundle({ archive }) }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(requests[0]?.url).toBe(
+      `https://control.example/api/projects/${PROJECT_ID}/observability/diagnostics/ingest`,
     );
     expect(requests[0]?.headers.get("authorization")).toBe(
       "Bearer project-token",
