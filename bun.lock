@@ -5,7 +5,7 @@
     "": {
       "name": "@absolutejs/observability",
       "dependencies": {
-        "@absolutejs/beacon": "0.6.61",
+        "@absolutejs/beacon": ">=0.7.0-beta.4 <0.8.0",
         "@absolutejs/diagnostics": "0.2.0",
         "@absolutejs/errors": "0.9.0",
         "@absolutejs/handoff": "0.1.0",
@@ -29,7 +29,7 @@
     },
   },
   "packages": {
-    "@absolutejs/beacon": ["@absolutejs/beacon@0.6.61", "", { "dependencies": { "@absolutejs/manifest": "0.9.0", "@sinclair/typebox": "0.34.52" }, "peerDependencies": { "web-vitals": ">=4" }, "optionalPeers": ["web-vitals"] }, "sha512-OQY5mvTH6ExBRbg483YAYmKTOnNrMRTbrJzH96fAUL3u8fgtsLyTb4kLoSiADIMVhWYN+vnW7m7pTP8Xhltgvg=="],
+    "@absolutejs/beacon": ["@absolutejs/beacon@0.7.0-beta.8", "", { "dependencies": { "@absolutejs/manifest": "0.9.0", "@sinclair/typebox": "0.34.52" }, "peerDependencies": { "web-vitals": ">=4" }, "optionalPeers": ["web-vitals"] }, "sha512-kBF6Tyk989GKfN1pVbyaTOy4EeRDk9Nqx/mjh2tqtuoM1IdvxD1pBhxsJtLZX5nlKp8iM9Mp+F6k9UBW4mTT0A=="],
 
     "@absolutejs/diagnostics": ["@absolutejs/diagnostics@0.2.0", "", { "dependencies": { "@absolutejs/manifest": "0.10.0", "@sinclair/typebox": "0.34.52" }, "peerDependencies": { "elysia": "^2.0.0-beta.6", "playwright": ">=1.50.0 <2" }, "optionalPeers": ["elysia", "playwright"] }, "sha512-995PIo0agl6mdwqnb4VtEmCXq+5pSod6mzLD0M0V1SsH2k77Uh8NhwLu6FF0gmo6N+iQZ7l8RaDMvo/8OdOm4g=="],
 
