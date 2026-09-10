@@ -15,7 +15,7 @@
         "web-vitals": "6.0.0",
       },
       "devDependencies": {
-        "@absolutejs/changelog": "^0.4.0",
+        "@absolutejs/changelog": "^0.5.1",
         "@types/bun": "^1.3.14",
         "elysia": "2.0.0-beta.6",
         "exact-mirror": "1.2.4",
@@ -32,7 +32,7 @@
   "packages": {
     "@absolutejs/beacon": ["@absolutejs/beacon@0.7.0-beta.8", "", { "dependencies": { "@absolutejs/manifest": "0.9.0", "@sinclair/typebox": "0.34.52" }, "peerDependencies": { "web-vitals": ">=4" }, "optionalPeers": ["web-vitals"] }, "sha512-kBF6Tyk989GKfN1pVbyaTOy4EeRDk9Nqx/mjh2tqtuoM1IdvxD1pBhxsJtLZX5nlKp8iM9Mp+F6k9UBW4mTT0A=="],
 
-    "@absolutejs/changelog": ["@absolutejs/changelog@0.4.0", "", { "dependencies": { "typescript": "^5.8.3" }, "bin": { "absolute-changelog": "dist/cli.js" } }, "sha512-4+rna0EUk1kZMGHJRmXIWvP+MV6pS4Ay24m+3h0XybYD/4ycgOXwdez7CUdb6hZQr7GC7XXTyhDzheEDAdlFcQ=="],
+    "@absolutejs/changelog": ["@absolutejs/changelog@0.5.1", "", { "dependencies": { "typescript": "^5.8.3" }, "bin": { "absolute-changelog": "dist/cli.js" } }, "sha512-6KxBk+couOvAlNrvwQOBJZt3MDS/RRyKeazRYt8tIemPXjn22oGwHKkPLploa4zS2dT0y6KCikxnOQAecbttRQ=="],
 
     "@absolutejs/diagnostics": ["@absolutejs/diagnostics@0.2.0", "", { "dependencies": { "@absolutejs/manifest": "0.10.0", "@sinclair/typebox": "0.34.52" }, "peerDependencies": { "elysia": "^2.0.0-beta.6", "playwright": ">=1.50.0 <2" }, "optionalPeers": ["elysia", "playwright"] }, "sha512-995PIo0agl6mdwqnb4VtEmCXq+5pSod6mzLD0M0V1SsH2k77Uh8NhwLu6FF0gmo6N+iQZ7l8RaDMvo/8OdOm4g=="],
 
