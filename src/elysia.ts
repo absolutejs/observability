@@ -273,7 +273,7 @@ export const createManagedObservabilityRelay = (
     prefix: "/api/observability",
   })
     .use(serverBoundary)
-    .error("global", ({ error, status }) => {
+    .onError("global", ({ error, status }) => {
       if (!(error instanceof ElysiaError) && !(error instanceof HTTPError))
         return status("Internal Server Error");
 
