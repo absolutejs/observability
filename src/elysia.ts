@@ -268,138 +268,162 @@ export const createManagedObservabilityRelay = (
           },
         });
 
-  return new Elysia({
-    name: "@absolutejs/observability",
-    prefix: "/api/observability",
-  })
-    .use(serverBoundary)
-    .onError("global", ({ error, status }) => {
-      if (!(error instanceof ElysiaError) && !(error instanceof HTTPError))
-        return status("Internal Server Error");
-
-      return undefined;
+  return (
+    new Elysia({
+      name: "@absolutejs/observability",
+      prefix: "/api/observability",
     })
-    .post(
-      "/errors",
-      { body: BeaconEnvelopeSchema },
-      async ({ body, status }) => {
-        if (body.project !== options.project)
-          return status(
-            HTTP_BAD_REQUEST,
-            "Observability project does not match this runtime",
-          );
-        try {
-          await upstream(
-            new URL(`${endpoint.pathname}/errors/ingest`, endpoint),
-            body,
-            true,
-          );
+      .use(serverBoundary)
+      .onError("global", ({ error, status }) => {
+        if (!(error instanceof ElysiaError) && !(error instanceof HTTPError))
+          return status("Internal Server Error");
 
-          return { accepted: body.events.length, project: options.project };
-        } catch {
-          return status(HTTP_BAD_GATEWAY, "Error ingest is unavailable");
-        }
-      },
-    )
-    .post(
-      "/replays",
-      { body: ReplayUploadSchema },
-      async ({ body, status }) => {
-        if (body.manifest.project !== options.project)
-          return status(
-            HTTP_BAD_REQUEST,
-            "Replay project does not match this runtime",
-          );
-        try {
-          await upstream(
-            new URL(`${endpoint.pathname}/replays/ingest`, endpoint),
-            body,
-            true,
-          );
+        return undefined;
+      })
+      .post(
+        "/errors",
+        { body: BeaconEnvelopeSchema },
+        async ({ body, status }) => {
+          if (body.project !== options.project)
+            return status(
+              HTTP_BAD_REQUEST,
+              "Observability project does not match this runtime",
+            );
+          try {
+            await upstream(
+              new URL(`${endpoint.pathname}/errors/ingest`, endpoint),
+              body,
+              true,
+            );
 
-          return {
-            accepted: body.chunks.length,
-            replayId: body.manifest.replayId,
-          };
-        } catch {
-          return status(HTTP_BAD_GATEWAY, "Replay ingest is unavailable");
-        }
-      },
-    )
-    .post(
-      "/diagnostics",
-      { body: t.Object({ bundle: t.Unknown() }) },
-      async ({ body, status }) => {
-        if (
-          new TextEncoder().encode(JSON.stringify(body)).byteLength >
-          MAX_DIAGNOSTIC_BYTES
-        ) {
-          return status(413, "Support report exceeds the configured limit");
-        }
-        const candidate = body.bundle as Partial<SupportBundle>;
-        if (
-          candidate.archive === undefined ||
-          candidate.manifest?.project !== options.project ||
-          !Array.isArray(candidate.markers)
-        ) {
-          return status(HTTP_BAD_REQUEST, "Support report is invalid");
-        }
-        let bundle: SupportBundle;
+            return { accepted: body.events.length, project: options.project };
+          } catch {
+            return status(HTTP_BAD_GATEWAY, "Error ingest is unavailable");
+          }
+        },
+      )
+      .post(
+        "/replays",
+        { body: ReplayUploadSchema },
+        async ({ body, status }) => {
+          if (body.manifest.project !== options.project)
+            return status(
+              HTTP_BAD_REQUEST,
+              "Replay project does not match this runtime",
+            );
+          try {
+            await upstream(
+              new URL(`${endpoint.pathname}/replays/ingest`, endpoint),
+              body,
+              true,
+            );
+
+            return {
+              accepted: body.chunks.length,
+              replayId: body.manifest.replayId,
+            };
+          } catch {
+            return status(HTTP_BAD_GATEWAY, "Replay ingest is unavailable");
+          }
+        },
+      )
+      .post(
+        "/diagnostics",
+        { body: t.Object({ bundle: t.Unknown() }) },
+        async ({ body, status }) => {
+          if (
+            new TextEncoder().encode(JSON.stringify(body)).byteLength >
+            MAX_DIAGNOSTIC_BYTES
+          ) {
+            return status(413, "Support report exceeds the configured limit");
+          }
+          const candidate = body.bundle as Partial<SupportBundle>;
+          if (
+            candidate.archive === undefined ||
+            candidate.manifest?.project !== options.project ||
+            !Array.isArray(candidate.markers)
+          ) {
+            return status(HTTP_BAD_REQUEST, "Support report is invalid");
+          }
+          let bundle: SupportBundle;
+          try {
+            bundle = createSupportBundle({
+              archive: candidate.archive,
+              ...(candidate.context === undefined
+                ? {}
+                : { context: candidate.context }),
+              ...(candidate.manifest.expiresAt === undefined
+                ? {}
+                : { expiresAt: candidate.manifest.expiresAt }),
+              ...(candidate.correlations?.issueFingerprints === undefined
+                ? {}
+                : {
+                    issueFingerprints: candidate.correlations.issueFingerprints,
+                  }),
+              markers: candidate.markers,
+              ...(candidate.correlations?.traceIds === undefined
+                ? {}
+                : { traceIds: candidate.correlations.traceIds }),
+            });
+          } catch {
+            return status(422, "Support report failed its privacy audit");
+          }
+          try {
+            await upstream(
+              new URL(`${endpoint.pathname}/diagnostics/ingest`, endpoint),
+              { bundle },
+              true,
+            );
+            return { accepted: 1, id: bundle.manifest.id };
+          } catch {
+            return status(
+              HTTP_BAD_GATEWAY,
+              "Support report ingest is unavailable",
+            );
+          }
+        },
+      )
+      /* What the browser package should record, from the platform's
+       * settings for this project: the token stays here, on the server. */
+      .get("/config", async ({ status }) => {
         try {
-          bundle = createSupportBundle({
-            archive: candidate.archive,
-            ...(candidate.context === undefined
-              ? {}
-              : { context: candidate.context }),
-            ...(candidate.manifest.expiresAt === undefined
-              ? {}
-              : { expiresAt: candidate.manifest.expiresAt }),
-            ...(candidate.correlations?.issueFingerprints === undefined
-              ? {}
-              : {
-                  issueFingerprints: candidate.correlations.issueFingerprints,
-                }),
-            markers: candidate.markers,
-            ...(candidate.correlations?.traceIds === undefined
-              ? {}
-              : { traceIds: candidate.correlations.traceIds }),
-          });
-        } catch {
-          return status(422, "Support report failed its privacy audit");
-        }
-        try {
-          await upstream(
-            new URL(`${endpoint.pathname}/diagnostics/ingest`, endpoint),
-            { bundle },
-            true,
+          const response = await doFetch(
+            new URL(`${endpoint.pathname}/config`, endpoint),
+            { headers: { authorization: `Bearer ${options.token}` } },
           );
-          return { accepted: 1, id: bundle.manifest.id };
+          if (!response.ok)
+            return status(
+              HTTP_BAD_GATEWAY,
+              "Observability settings are unavailable",
+            );
+
+          return (await response.json()) as Record<string, unknown>;
         } catch {
           return status(
             HTTP_BAD_GATEWAY,
-            "Support report ingest is unavailable",
+            "Observability settings are unavailable",
           );
         }
-      },
-    )
-    .post("/vitals", { body: WebVitalSchema }, async ({ body, status }) => {
-      if (body.project !== options.project)
-        return status(
-          HTTP_BAD_REQUEST,
-          "Web Vital project does not match this runtime",
-        );
-      try {
-        await upstream(
-          new URL(`${endpoint.pathname}/vitals/ingest`, endpoint),
-          body,
-          true,
-        );
+      })
+      .post("/vitals", { body: WebVitalSchema }, async ({ body, status }) => {
+        if (body.project !== options.project)
+          return status(
+            HTTP_BAD_REQUEST,
+            "Web Vital project does not match this runtime",
+          );
+        try {
+          await upstream(
+            new URL(`${endpoint.pathname}/vitals/ingest`, endpoint),
+            body,
+            true,
+          );
 
-        return { accepted: 1, project: options.project };
-      } catch {
-        return status(HTTP_BAD_GATEWAY, "Web Vital ingest is unavailable");
-      }
-    });
+          return { accepted: 1, project: options.project };
+        } catch {
+          return status(HTTP_BAD_GATEWAY, "Web Vital ingest is unavailable");
+        }
+      })
+  );
 };
 
 export const createManagedObservabilityRelayFromEnv = (
