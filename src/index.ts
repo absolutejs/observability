@@ -48,13 +48,97 @@ export type ManagedObservabilityOptions = {
   recordCanvas?: boolean;
   flushIntervalMs?: number;
   maxBatch?: number;
+  /**
+   * Read what to record from the hosting platform through the relay's
+   * `/config` (on unless `false`). The platform's settings win over these
+   * options; if it doesn't answer within `timeoutMs`, these apply.
+   */
+  remoteSettings?: boolean | { endpoint?: string; timeoutMs?: number };
+};
+
+/** What the hosting platform says to record, from the relay's `/config`. */
+export type RemoteObservabilitySettings = {
+  maskAllInputs?: boolean;
+  maskAllText?: boolean;
+  recordCanvas?: boolean;
+  replay?: boolean;
+  /** Of the visits that report, how many are recorded, 0 to 1. */
+  replaySampleRate?: number;
+  /** How many visitors report at all, 0 to 1. */
+  sampleRate?: number;
+  signals?: boolean;
+  /** Whether the "Report a problem" button shows. */
+  support?: boolean;
+  vitals?: boolean;
+};
+
+const REMOTE_SETTINGS_ENDPOINT = "/api/observability/config";
+const REMOTE_SETTINGS_TIMEOUT_MS = 3000;
+
+/** The app's own options with the platform's settings over them. */
+export const withRemoteSettings = (
+  options: ManagedObservabilityOptions,
+  remote: RemoteObservabilitySettings,
+): ManagedObservabilityOptions => ({
+  ...options,
+  ...(remote.maskAllInputs === undefined
+    ? {}
+    : { maskAllInputs: remote.maskAllInputs }),
+  ...(remote.maskAllText === undefined
+    ? {}
+    : { maskAllText: remote.maskAllText }),
+  ...(remote.recordCanvas === undefined
+    ? {}
+    : { recordCanvas: remote.recordCanvas }),
+  ...(remote.replay === undefined ? {} : { replay: remote.replay }),
+  ...(remote.signals === undefined ? {} : { signals: remote.signals }),
+  ...(remote.support === undefined ? {} : { support: remote.support }),
+  ...(remote.vitals === undefined ? {} : { vitals: remote.vitals }),
+});
+
+/* Whether this visit falls inside a share of visits. */
+const sampledIn = (rate: number | undefined, draw = Math.random()) =>
+  rate === undefined || draw < rate;
+
+const remoteSettingsTarget = (options: ManagedObservabilityOptions) => {
+  if (options.remoteSettings === false) return null;
+  if (typeof fetch === "undefined") return null;
+  const configured =
+    typeof options.remoteSettings === "object" ? options.remoteSettings : {};
+
+  return {
+    endpoint: configured.endpoint ?? REMOTE_SETTINGS_ENDPOINT,
+    timeoutMs: configured.timeoutMs ?? REMOTE_SETTINGS_TIMEOUT_MS,
+  };
+};
+
+/* The platform's settings, or null when it doesn't answer in time. */
+const loadRemoteSettings = async (target: {
+  endpoint: string;
+  timeoutMs: number;
+}) => {
+  try {
+    const response = await fetch(target.endpoint, {
+      headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(target.timeoutMs),
+    });
+    if (!response.ok) return null;
+
+    return (await response.json()) as RemoteObservabilitySettings;
+  } catch {
+    return null;
+  }
 };
 
 export type ManagedObservability = {
   beacon: Beacon;
+  /** The platform's settings once read (null when there were none). */
+  settings: Promise<RemoteObservabilitySettings | null>;
   close: () => Promise<void>;
   flushReplay: () => Promise<string | null>;
-  replay?: ReplayController;
+  /** Undefined until it starts: at once, or once the platform's settings
+   *  are read (and not at all when they turn it off). */
+  replay?: ReplayController | undefined;
   diagnostics?: BrowserDiagnostics;
   support?: SupportModeController;
 };
@@ -64,7 +148,21 @@ export const connectManagedSupportReport = (
   options?: { root?: Document | HTMLElement; tagName?: string },
 ): (() => void) => {
   if (observability.support === undefined) return () => undefined;
-  return connectSupportReportElements(observability.support, options);
+  const disconnect = connectSupportReportElements(
+    observability.support,
+    options,
+  );
+  /* The platform can turn the button off without a code change. */
+  void observability.settings.then((settings) => {
+    if (settings?.support !== false) return;
+    const root = options?.root ?? document;
+    for (const element of root.querySelectorAll(
+      options?.tagName ?? "absolute-support-report",
+    ))
+      (element as HTMLElement).hidden = true;
+  });
+
+  return disconnect;
 };
 
 const replayOptions = (
@@ -93,10 +191,14 @@ const replayOptions = (
 export const createManagedObservability = (
   options: ManagedObservabilityOptions,
 ): ManagedObservability => {
-  const replay =
-    options.replay === false
-      ? undefined
-      : createReplayController(replayOptions(options));
+  const remoteTarget = remoteSettingsTarget(options);
+  /* With the platform's settings to wait for, replay starts once they're
+   * read, so its privacy choices apply from the first frame. */
+  let replay: ReplayController | undefined =
+    remoteTarget === null && options.replay !== false
+      ? createReplayController(replayOptions(options))
+      : undefined;
+  const getReplayId = () => replay?.getReplayId();
   const beforeSend = (event: BeaconEvent) => {
     replay?.flushThrottled();
 
@@ -106,7 +208,7 @@ export const createManagedObservability = (
     beforeSend,
     endpoint: "/api/observability/errors",
     project: options.project,
-    ...(replay === undefined ? {} : { getReplayId: replay.getReplayId }),
+    getReplayId,
     ...(options.environment === undefined
       ? {}
       : { environment: options.environment }),
@@ -142,7 +244,7 @@ export const createManagedObservability = (
           ...(options.release === undefined
             ? {}
             : { release: options.release }),
-          ...(replay === undefined ? {} : { replayId: replay.getReplayId }),
+          replayId: getReplayId,
         });
   const support =
     diagnostics === undefined
@@ -183,14 +285,31 @@ export const createManagedObservability = (
           },
         });
 
+  const settings =
+    remoteTarget === null
+      ? Promise.resolve(null)
+      : loadRemoteSettings(remoteTarget).then((remote) => {
+          const merged =
+            remote === null ? options : withRemoteSettings(options, remote);
+          if (merged.replay !== false && sampledIn(remote?.replaySampleRate))
+            replay = createReplayController(replayOptions(merged));
+          /* A visitor outside the share that reports sends nothing. */
+          if (!sampledIn(remote?.sampleRate)) void beacon.close();
+
+          return remote;
+        });
+
   return {
     beacon,
+    settings,
     close: async () => {
       support?.discard();
       await Promise.all([beacon.close(), replay?.stop()]);
     },
     flushReplay: () => replay?.flush() ?? Promise.resolve(null),
-    ...(replay === undefined ? {} : { replay }),
+    get replay() {
+      return replay;
+    },
     ...(diagnostics === undefined ? {} : { diagnostics }),
     ...(support === undefined ? {} : { support }),
   };

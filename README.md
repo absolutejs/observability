@@ -49,6 +49,35 @@ Mount the relay before application routes. Its manifest declares the
 `server-boundary` placement, so the hosted AbsoluteJS.ai platform does this automatically and
 the error hook observes every generated handler.
 
+## Settings from the platform
+
+On the hosted platform, what an app records is chosen on its Issues page, not
+in its code. The browser package reads those settings from the relay's
+`GET /api/observability/config` (the relay asks the platform with the runtime's
+token, which never reaches the browser), and they win over the options passed
+to `createManagedObservability`:
+
+- session replay on or off, and how many sessions it records
+- input masking, text masking, and canvas recording
+- page speed and signals
+- how many visitors report at all
+- whether the `<absolute-support-report>` button shows
+
+Errors are captured from the first moment as before. Replay starts once the
+settings are read, so its privacy choices apply from the first frame; if the
+platform doesn't answer within 3 seconds the app's own options apply.
+
+```ts
+createManagedObservability({
+  project,
+  remoteSettings: { timeoutMs: 1500 }, // or false: only these options
+});
+```
+
+The platform also drops whatever is turned off as it arrives, so an older
+version of this package stops sending it too; only the privacy and sampling
+choices need this version.
+
 ## Support Mode
 
 Applications can use the UI or the headless controller:

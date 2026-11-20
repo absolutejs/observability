@@ -5,6 +5,26 @@
 		{
 			"changes": [
 				{
+					"detail": "The browser package asks the relay's new GET /api/observability/config for the hosting platform's settings and lets them win over its own options: session replay and how many sessions it records, input and text masking, canvas recording, page speed, signals, how many visitors report, and the Report a problem button. Replay starts once they're read, so its privacy choices apply from the first frame; if the platform doesn't answer within 3 seconds (remoteSettings.timeoutMs), the app's own options apply. Set remoteSettings: false to keep only the app's options. The relay (createManagedObservabilityRelay, and createManagedObservabilityRelayFromEnv) reads /config with the runtime's token, which never reaches the browser.",
+					"kind": "added",
+					"summary": "Read what to record from the hosting platform",
+					"symbols": [
+						"ManagedObservability",
+						"ManagedObservabilityOptions",
+						"RemoteObservabilitySettings",
+						"createManagedObservability",
+						"createManagedObservabilityRelay",
+						"createManagedObservabilityRelayFromEnv",
+						"withRemoteSettings"
+					]
+				}
+			],
+			"date": "2026-11-20",
+			"version": "0.8.0"
+		},
+		{
+			"changes": [
+				{
 					"detail": "Elysia 2.0.0-rc.0 renamed every lifecycle hook to its `on` form and removed setup/cleanup (now onStart/onStop). This package now builds and tests against Elysia 2.0.0-rc.0 and requires `elysia ^2.0.0-rc.0`, which also accepts later release candidates and 2.0.0. Its relay plugin's onError hook is renamed to match, and it moves to @absolutejs/errors 0.10.0, which made the same change.",
 					"kind": "breaking",
 					"migration": {
